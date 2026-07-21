@@ -11,3 +11,24 @@ __pycache__/
 # Environment
 .venv/
 venv/
+# Raw data
+raw_data/*.csv
+
+# Processed data
+processed/*.csv
+!processed/.gitkeep
+
+# EDA outputs
+eda_outputs/*.png
+eda_outputs/*.csv
+!eda_outputs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
