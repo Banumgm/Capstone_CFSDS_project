@@ -6,33 +6,10 @@ that a reader of the final report would otherwise have to guess at.
 Keep entries short — one paragraph max. Newest entries at the top.
 
 ---
-
-## Feature Engineering
-
-**Excluded `firearea`, `cumuarea`, and `pctgrowth` from the model feature
-set.** These variables are derived from the same circular-growth
-approximation, for the same burn day, as the target variable `sprdistm`
-(see Barber et al., 2024, Eq. 1) — they are not independent environmental
-predictors but alternate representations of the same measured spread
-event. `firearea` shows the strongest raw correlation with the target
-(r = 0.645 on the full 2002–2024 dataset) precisely because of this
-shared derivation, not because it reflects weather, fuel, or topography.
-Including it would let the model largely "predict" `sprdistm` from a
-mathematically related quantity rather than from genuine environmental
-covariates, undermining the test of H1 and the practical value of the
-model (at prediction time, tomorrow's `firearea` is not actually known in
-advance either). `prevgrow` (previous day's growth) was kept, since using
-a lagged value of a related variable to predict today's spread is a
-legitimate autoregressive predictor, not same-event leakage.
-
 ## Data Collection / Scope
 
-**Re-downloaded and included the full 2002–2024 period** (23 yearly
-files), after an initial version of the pipeline was run on 2020–2024
-only. The shorter period made the temporal holdout proposed in the
-proposal (train 2002–2018, test 2019–2024) impossible, since no
-pre-2020 data existed. With the full range included, the combined
-dataset totals 122,851 records across Canada; after spatial filtering
+**Downloaded and included the full 2002–2024 period** (23 yearly
+files). Dataset totals 122,851 records across Canada; after spatial filtering
 to British Columbia and Alberta, this yields 38,318 fire-day records
 (British Columbia: 24,724, 64.5%; Alberta: 13,594, 35.5%), split
 almost evenly across the intended temporal holdout — 18,942 records
@@ -103,7 +80,24 @@ cleaning, not one-hot/ordinal encoded.** Actual encoding for modeling is
 deferred to `03_feature_engineering.py`, so the cleaning step stays
 reversible and doesn't inflate the file with dummy columns before it's
 clear which model needs which encoding scheme.
-
 ---
+
+## FOR Feature Engineering
+**Exclude `firearea`, `cumuarea`, and `pctgrowth` from the model feature
+set.** These variables are derived from the same circular-growth
+approximation, for the same burn day, as the target variable `sprdistm`
+(see Barber et al., 2024, Eq. 1) — they are not independent environmental
+predictors but alternate representations of the same measured spread
+event. `firearea` shows the strongest raw correlation with the target
+(r = 0.645 on the full 2002–2024 dataset) precisely because of this
+shared derivation, not because it reflects weather, fuel, or topography.
+Including it would let the model largely "predict" `sprdistm` from a
+mathematically related quantity rather than from genuine environmental
+covariates, undermining the test of H1 and the practical value of the
+model (at prediction time, tomorrow's `firearea` is not actually known in
+advance either). `prevgrow` (previous day's growth) was kept, since using
+a lagged value of a related variable to predict today's spread is a
+legitimate autoregressive predictor, not same-event leakage.
+
 
 <!-- Add new entries above this line -->
