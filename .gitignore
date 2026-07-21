@@ -1,0 +1,13 @@
+# Raw data — never commit
+raw_data/
+*.csv
+!processed/cfsds_bc_ab_clean.csv
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Environment
+.venv/
+venv/
