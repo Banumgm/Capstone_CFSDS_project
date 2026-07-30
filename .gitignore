@@ -2,6 +2,14 @@
 raw_data/
 *.csv
 !processed/cfsds_bc_ab_clean.csv
+!processed/lightgbm_optuna_search.csv
+!processed/xgboost_optuna_search.csv
+!processed/rf_hyperparameter_search.csv
+!processed/tweedie_hyperparameter_search.csv
+!processed/tweedie_baseline_vs_tuned_final.csv
+!processed/rf_v3_results.csv
+!processed/model_comparison_final.csv
+!processed/spatial_cross_model_comparison.csv
 
 # Python
 __pycache__/
@@ -11,17 +19,35 @@ __pycache__/
 # Environment
 .venv/
 venv/
+
 # Raw data
 raw_data/*.csv
 
 # Processed data
 processed/*.csv
+!processed/cfsds_bc_ab_clean.csv
+!processed/lightgbm_optuna_search.csv
+!processed/xgboost_optuna_search.csv
+!processed/rf_hyperparameter_search.csv
+!processed/tweedie_hyperparameter_search.csv
+!processed/tweedie_baseline_vs_tuned_final.csv
+!processed/rf_v3_results.csv
+!processed/model_comparison_final.csv
+!processed/spatial_cross_model_comparison.csv
 !processed/.gitkeep
 
 # EDA outputs
 eda_outputs/*.png
 eda_outputs/*.csv
 !eda_outputs/.gitkeep
+
+# Model charts (Phase 2+ visualizations)
+model_charts/*.png
+!model_charts/.gitkeep
+!model_charts/model_comparison_rmse_mae.png
+!model_charts/temporal_vs_spatial_validation.png
+!model_charts/h1_preliminary_group_importance.png
+!model_charts/spatial_error_map.png
 
 # Python
 __pycache__/
