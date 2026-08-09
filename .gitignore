@@ -34,6 +34,11 @@ processed/*.csv
 !processed/rf_v3_results.csv
 !processed/model_comparison_final.csv
 !processed/spatial_cross_model_comparison.csv
+!processed/threshold_sensitivity_comparison.csv
+!processed/classification_model_comparison.csv
+!processed/province_threshold_sensitivity_comparison.csv
+!processed/province_threshold_comparison.csv
+
 !processed/.gitkeep
 
 # EDA outputs

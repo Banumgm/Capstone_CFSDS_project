@@ -1,0 +1,3 @@
+target_definition,value_m_per_day,positive_rate_test,cv_pr_auc,test_roc_auc,test_pr_auc,f2_threshold,precision_at_f2,recall_at_f2,f2_score
+90th percentile,984.44,6.6%,0.7075,0.9396,0.5654,0.027,0.413,0.754,0.647
+85th percentile,589.33,10.4%,0.7857,0.9277,0.6534,0.001,0.404,0.851,0.697

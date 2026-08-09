@@ -1,0 +1,3 @@
+province,threshold_90th,pct_diff_from_combined,positive_rate_combined_threshold,positive_rate_own_threshold
+Alberta,1291.389026825424,31.2,0.12736332991352778,0.10010259416678881
+British Columbia,843.3009814749269,-14.3,0.08466045053222213,0.10000825150589983
