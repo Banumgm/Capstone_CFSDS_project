@@ -1,4 +1,4 @@
 model,cv_pr_auc,test_roc_auc,test_pr_auc,f2_threshold,precision_at_f2,recall_at_f2,f2_score
-LightGBM,0.7075,0.9396,0.5654,0.027,0.413,0.754,0.647
-Random Forest,0.6521,0.9283,0.5332,0.214,0.349,0.781,0.626
+LightGBM,0.7075,0.9396,0.5654,0.12,0.513,0.601,0.581
+Random Forest,0.6521,0.9283,0.5332,0.319,0.453,0.656,0.602
 Logistic Regression,0.5412,0.8918,0.381,,,,

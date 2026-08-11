@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import joblib
 
-CHOSEN_THRESHOLD = 0.027
+CHOSEN_THRESHOLD = 0.120  
 
 X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
 y_test_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
@@ -63,18 +63,16 @@ if eco_cols:
             print(f"{col}: FP rate = {fp_rate:.2%} (n_true_negative_days={n_neg})")
 elif "ecozone" in analysis_df.columns:
     print("\n-- False negative rate by ecozone --")
-    grp = analysis_df[analysis_df["y_true"] == 1].groupby("ecozone").apply(
-        lambda d: (d["y_pred"] == 0).mean()
+    grp = analysis_df[analysis_df["y_true"] == 1].groupby("ecozone", observed=True).apply(
+        lambda d: (d["y_pred"] == 0).mean(), include_groups=False
     )
     print(grp.sort_values(ascending=False))
 
     print("\n-- False positive rate by ecozone --")
-    grp_fp = analysis_df[analysis_df["y_true"] == 0].groupby("ecozone").apply(
-        lambda d: (d["y_pred"] == 1).mean()
+    grp_fp = analysis_df[analysis_df["y_true"] == 0].groupby("ecozone", observed=True).apply(
+        lambda d: (d["y_pred"] == 1).mean(), include_groups=False
     )
     print(grp_fp.sort_values(ascending=False))
-else:
-    print("\nNo ecozone columns found — skipping ecozone breakdown.")
 
 if "fireday_sin" in analysis_df.columns and "fireday_cos" in analysis_df.columns:
     analysis_df["fireday_approx"] = (
@@ -83,18 +81,16 @@ if "fireday_sin" in analysis_df.columns and "fireday_cos" in analysis_df.columns
     analysis_df["month_bin"] = pd.cut(analysis_df["fireday_approx"], bins=12, labels=False)
 
     print("\n-- False negative rate by approx fire-day (binned into months) --")
-    grp = analysis_df[analysis_df["y_true"] == 1].groupby("month_bin").apply(
-        lambda d: (d["y_pred"] == 0).mean()
+    grp = analysis_df[analysis_df["y_true"] == 1].groupby("month_bin", observed=True).apply(
+        lambda d: (d["y_pred"] == 0).mean(), include_groups=False
     )
     print(grp)
 
     print("\n-- False positive rate by approx fire-day (binned into months) --")
-    grp_fp = analysis_df[analysis_df["y_true"] == 0].groupby("month_bin").apply(
-        lambda d: (d["y_pred"] == 1).mean()
+    grp_fp = analysis_df[analysis_df["y_true"] == 0].groupby("month_bin", observed=True).apply(
+        lambda d: (d["y_pred"] == 1).mean(), include_groups=False
     )
     print(grp_fp)
-else:
-    print("\nNo fireday_sin/cos columns found — skipping seasonal breakdown.")
 
 numeric_cols = analysis_df.select_dtypes(include=[np.number]).columns
 numeric_cols = [c for c in numeric_cols if c not in
@@ -111,8 +107,6 @@ comparison = comparison.sort_values("abs_diff", ascending=False)
 print("\n-- Feature means: false negatives vs true positives (top 15 by difference) --")
 print(comparison.head(15).to_string())
 
-# What's actually driving the false alarms — compares the days the model
-# wrongly flagged against the low-spread days it correctly left alone.
 comparison_fp = pd.DataFrame({
     "false_positive_mean": false_positives[numeric_cols].mean(),
     "true_negative_mean": true_negatives[numeric_cols].mean(),
@@ -122,5 +116,4 @@ comparison_fp["abs_diff"] = comparison_fp["diff"].abs()
 comparison_fp = comparison_fp.sort_values("abs_diff", ascending=False)
 
 print("\n-- Feature means: false positives vs true negatives (top 15 by difference) --")
-print("(explains what makes the model over-alert on a day that turned out low-spread)")
 print(comparison_fp.head(15).to_string())
