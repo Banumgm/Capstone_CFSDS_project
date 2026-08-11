@@ -3,7 +3,7 @@
 Running record of methodological decisions made during the project, with
 short justifications. Add a new entry whenever the team makes a choice
 that a reader of the final report would otherwise have to guess at.
-Keep entries short — one paragraph max. Newest entries at the top.
+Keep entries short — one paragraph max. 
 
 ---
 ## Data Collection / Scope
@@ -220,5 +220,98 @@ can shift. The Databricks run is the source of truth for all numbers
 reported in the final report; local (VS Code) runs are for verifying the
 pipeline executes correctly, not for generating new official results.
 
+## Phase 3 — Classification Models
+
+**Target definition: binary "high-spread day" label via 90th-percentile
+threshold on `sprdistm`, computed on TRAIN only.** Frames the practical
+early-warning use case (flag days likely to see extreme fire spread)
+alongside the Phase 2 regression models. The 90th-percentile cutoff
+(984.44 m/day) is computed once on the temporal-split train set and
+applied as a fixed value to both train and test, so the threshold itself
+is never derived from data the model is later evaluated on. Resulting
+class balance: ~10% positive in train, ~6.6% positive in test (the test
+period skews toward lower-spread days).
+
+**Class weighting (`scale_pos_weight` / `class_weight='balanced'`) used
+for imbalance handling instead of SMOTE.** SMOTE's nearest-neighbor
+interpolation is not well suited to features that are cyclically encoded
+(e.g. `fireday_sin`/`fireday_cos`) or a native categorical (`ecozone`) —
+interpolating between two categories or across a cyclical boundary
+produces meaningless synthetic points. Class weighting achieves the same
+imbalance-correction goal without this issue.
+
+**Three classifiers compared on the same imbalance-handling protocol:
+LightGBM (primary), Random Forest (baseline), Logistic Regression
+(interpretability baseline).** All tuned via Optuna against PR-AUC
+(average precision), not accuracy, since accuracy is uninformative on a
+~90/10 imbalanced target. Logistic Regression is not expected to compete
+with the tree models on raw performance but is retained for its
+standardized coefficients, mirroring the role Tweedie GLM plays in the
+Phase 2 regression comparison.
+
+**F2-optimal decision threshold selection was initially implemented with
+test-set leakage, then corrected.** The original implementation ran
+`precision_recall_curve` directly on test-set probabilities to choose the
+F2-optimal threshold, then reported performance on that same test set —
+tuning a model parameter (the decision threshold) and evaluating it on
+identical data. Corrected across all threshold-selection cells (LightGBM,
+Random Forest, calibration check, 85th-percentile and province-specific
+sensitivity analyses) to select the threshold on a validation split
+carved out of TRAIN only (80/20, stratified); test-set probabilities are
+now touched exactly once, at the end, purely to report performance at the
+already-fixed threshold. This changed the reported primary-model
+threshold from 0.027 (leaked) to 0.120 (validation-selected), and lowered
+reported test precision/recall/F2 accordingly (0.413/0.754/0.647 →
+0.513/0.601/0.581) — the corrected numbers are the accurate, generalizable
+estimates; the original numbers were optimistic.
+
+**LightGBM chosen as the final classifier over Random Forest, despite RF
+showing a marginally higher raw F2-score at its own operating point
+(0.602 vs. 0.581).** LightGBM leads on every threshold-independent
+ranking metric (CV PR-AUC 0.7075 vs. 0.6521, test PR-AUC 0.5654 vs.
+0.5332, test ROC-AUC 0.9396 vs. 0.9283). A matched-recall comparison
+(both models evaluated at RF's own F2-optimal recall of 0.839, on the
+same validation split) showed LightGBM achieving higher precision (0.529
+vs. 0.463) and F2 (0.751 vs. 0.722) at that same recall level — indicating
+RF's raw F2 "win" reflected where its threshold happened to sit on its
+own precision-recall curve, not a genuine ranking-quality advantage. This
+comparison is based on a single validation split rather than repeated
+resampling, so it is treated as suggestive rather than conclusive.
+
+**Isotonic calibration tested and not adopted.** A calibrated version of
+the LightGBM classifier (fit on a train-derived calibration holdout, F2
+threshold also selected on that holdout) showed a lower Brier score
+(0.0415 vs. 0.0440, better-calibrated probabilities) but slightly worse
+discrimination on every other metric (PR-AUC 0.5404 vs. 0.5654, F2 0.573
+vs. 0.581) than the uncalibrated model. Since the deployed use case relies
+on ranking/threshold performance rather than well-calibrated probability
+values in isolation, the uncalibrated model was retained.
+
+**Sensitivity analysis: 85th-percentile target definition tested as an
+alternative to the 90th-percentile primary target, not adopted.** The
+85th-percentile model showed stronger CV PR-AUC (0.7857 vs. 0.7075) and
+higher recall/F2 at its own validation-selected F2-optimal point (recall
+0.778 vs. 0.601, F2 0.683 vs. 0.581), but its F2-optimal threshold (0.003)
+is unusually low, suggesting a flatter probability distribution near the
+decision boundary rather than sharper class separation. 90th percentile
+was retained as the primary definition for consistency with the Phase 2
+regression framing and because a rarer, more extreme threshold better
+matches the operational framing of an evacuation/resource-allocation
+alert (alert rarity supports trust and actionability). Documented as a
+robustness check.
+
+**Sensitivity analysis: per-province (BC/AB) 90th-percentile thresholds
+tested instead of one combined threshold, not adopted.** Alberta's raw
+90th percentile is ~31% higher than British Columbia's (1,291 vs. 843
+m/day) on train data, reflecting the same regime difference noted in the
+Phase 2 spatial-holdout results. A model trained against per-province
+thresholds performed close to the combined-threshold primary model
+(test F2 = 0.597 vs. 0.581 — marginally higher), but was not adopted:
+the gain is within the range of run-to-run variation rather than a clear
+improvement, and a province-specific threshold definition adds deployment
+complexity and weakens the interpretability of "high-spread day" as a
+single, portable operational definition. Documented as a robustness check
+and a candidate for future work if province-level alerting is required
+operationally.
 
 <!-- Add new entries above this line -->
