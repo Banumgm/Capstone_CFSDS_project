@@ -8,8 +8,8 @@ test data, to avoid leakage into the label definition itself.
 """
 import pandas as pd
 
-y_train = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train.csv").iloc[:, 0]
-y_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test.csv").iloc[:, 0]
+y_train = pd.read_csv("processed/y_train.csv").iloc[:, 0]
+y_test  = pd.read_csv("processed/y_test.csv").iloc[:, 0]
 
 THRESHOLD = y_train.quantile(0.90)
 print(f"90th percentile threshold (train only): {THRESHOLD:.2f} m/day")
