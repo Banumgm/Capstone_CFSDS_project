@@ -103,7 +103,7 @@ config = {
     }
 }
 
-with open("/Workspace/Capstone_Group1/models/classifier_config.json", "w") as f:
+with open("models/classifier_config.json", "w") as f:
     json.dump(config, f, indent=2)
 
 print("Saved: classifier_config.json")
