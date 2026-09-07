@@ -19,11 +19,11 @@ from sklearn.metrics import (
     precision_score, recall_score
 )
 
-X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
-X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
-y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
-y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
-train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
+X_train = pd.read_csv("processed/X_train_tree.csv")
+X_test  = pd.read_csv("processed/X_test_tree.csv")
+y_train_clf = pd.read_csv("processed/y_train_clf.csv").iloc[:, 0]
+y_test_clf  = pd.read_csv("processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("processed/train_temporal.csv")
 
 cat_cols = ["ecozone"]
 X_train_rf = pd.get_dummies(X_train, columns=cat_cols, drop_first=True)
@@ -34,7 +34,7 @@ fire_ids = train_raw["ID"]
 
 # --- Deployed model (fit on 100% of train) -- used only for the final,
 #     single, end-of-cell evaluation on test. Not used for threshold search. ---
-rf_clf = joblib.load("/Workspace/Capstone_Group1/models/rf_classifier.pkl")
+rf_clf = joblib.load("models/rf_classifier.pkl")
 
 # --- Validation split carved out of TRAIN only, grouped by fire ID ---
 group_kfold = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
