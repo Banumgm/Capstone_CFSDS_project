@@ -23,11 +23,11 @@ from sklearn.metrics import (
 )
 import optuna
 
-X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
-X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
-y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
-y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
-train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
+X_train = pd.read_csv("processed/X_train_tree.csv")
+X_test  = pd.read_csv("processed/X_test_tree.csv")
+y_train_clf = pd.read_csv("processed/y_train_clf.csv").iloc[:, 0]
+y_test_clf  = pd.read_csv("processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("processed/train_temporal.csv")
 
 cat_cols = ["ecozone"]
 X_train_rf = pd.get_dummies(X_train, columns=cat_cols, drop_first=True)
@@ -82,6 +82,6 @@ print(cm)
 report = classification_report(y_test_clf, y_pred)
 print(report)
 
-os.makedirs("/Workspace/Capstone_Group1/models", exist_ok=True)
-joblib.dump(best_rf_clf, "/Workspace/Capstone_Group1/models/rf_classifier.pkl")
+os.makedirs("models", exist_ok=True)
+joblib.dump(best_rf_clf, "models/rf_classifier.pkl")
 print("Saved: rf_classifier.pkl")
