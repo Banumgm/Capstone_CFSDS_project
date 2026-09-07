@@ -38,7 +38,7 @@ comparison = pd.DataFrame([
     },
 ])
 print(comparison.to_string(index=False))
-comparison.to_csv("/Workspace/Capstone_Group1/processed/classification_model_comparison.csv", index=False)
+comparison.to_csv("processed/classification_model_comparison.csv", index=False)
 print("\nSaved: classification_model_comparison.csv")
 print("""
 Rationale: LightGBM achieves the best cross-validated PR-AUC (0.6674 vs
