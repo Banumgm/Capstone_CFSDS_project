@@ -2,16 +2,18 @@
 Task 3b — Threshold selection, Random Forest
 14b_rf_threshold_selection.py
 
-Selects the F2-optimal decision threshold for the Random Forest classifier.
-The threshold is chosen on a validation split carved out of TRAIN only,
-never on the test set. Test-set probabilities are touched exactly once,
-at the end, purely to report performance at the already-fixed threshold.
+Selects the F2-optimal decision threshold for the Random Forest
+classifier. The threshold is chosen on a validation split carved out of
+TRAIN only, grouped by fire ID so that no fire contributes rows to both
+the fit and validation portion. Test-set probabilities are touched
+exactly once, at the end, purely to report performance at the
+already-fixed threshold.
 """
 import pandas as pd
 import numpy as np
 import joblib
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.metrics import (
     precision_recall_curve, confusion_matrix, classification_report,
     precision_score, recall_score
@@ -21,24 +23,26 @@ X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
 X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
 y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
 y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
 
-# --- One-hot encode ecozone, aligned across train/test (same as 14_rf_classifier.py) ---
 cat_cols = ["ecozone"]
 X_train_rf = pd.get_dummies(X_train, columns=cat_cols, drop_first=True)
 X_test_rf  = pd.get_dummies(X_test, columns=cat_cols, drop_first=True)
 X_train_rf, X_test_rf = X_train_rf.align(X_test_rf, join="left", axis=1, fill_value=0)
 
+fire_ids = train_raw["ID"]
+
 # --- Deployed model (fit on 100% of train) -- used only for the final,
 #     single, end-of-cell evaluation on test. Not used for threshold search. ---
 rf_clf = joblib.load("/Workspace/Capstone_Group1/models/rf_classifier.pkl")
 
-# --- Validation split carved out of TRAIN only (already one-hot encoded,
-#     so fit/val share the same columns as X_test_rf) ---
-X_fit, X_val, y_fit, y_val = train_test_split(
-    X_train_rf, y_train_clf, test_size=0.2, stratify=y_train_clf, random_state=42
-)
+# --- Validation split carved out of TRAIN only, grouped by fire ID ---
+group_kfold = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+fit_idx, val_idx = next(group_kfold.split(X_train_rf, y_train_clf, groups=fire_ids))
+X_fit, X_val = X_train_rf.iloc[fit_idx], X_train_rf.iloc[val_idx]
+y_fit, y_val = y_train_clf.iloc[fit_idx], y_train_clf.iloc[val_idx]
 
-BEST_PARAMS = {"n_estimators": 543, "max_depth": 20, "min_samples_leaf": 5}
+BEST_PARAMS = {"n_estimators": 507, "max_depth": 20, "min_samples_leaf": 5}
 
 val_model = RandomForestClassifier(
     **BEST_PARAMS, class_weight="balanced", random_state=42, n_jobs=-1

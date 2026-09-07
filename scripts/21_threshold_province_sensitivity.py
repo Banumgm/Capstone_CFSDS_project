@@ -2,11 +2,12 @@
 Task 3b — Sensitivity analysis: province-specific threshold target
 21_threshold_province_sensitivity.py
 
-Uses per-province 90th-percentile thresholds (train only) instead of a
-single combined threshold, to check sensitivity to this design choice.
-The F2-optimal threshold is selected on a validation split carved out
-of TRAIN only, not on test.
-
+Tests whether defining "high-spread day" using each row's own province
+threshold (computed on TRAIN only, per province) changes classification
+performance versus the combined 90th-percentile target. Same feature set
+(X_train_tree/X_test_tree), same LightGBM tuning protocol as the primary
+model, for a fair comparison. Cross-validation and threshold selection
+are both grouped by fire ID, consistent with the primary model.
 """
 import pandas as pd
 import numpy as np
@@ -14,7 +15,7 @@ import lightgbm as lgb
 import optuna
 import joblib
 import os
-from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
 from sklearn.metrics import (
     average_precision_score, roc_auc_score, precision_recall_curve,
     confusion_matrix, classification_report, precision_score, recall_score
@@ -22,29 +23,48 @@ from sklearn.metrics import (
 
 BASE_DIR = "/Workspace/Capstone_Group1/processed" if os.path.exists("/Workspace") else "processed"
 
+# --- Load feature sets (same as primary classifier) ---
 X_train = pd.read_csv(f"{BASE_DIR}/X_train_tree.csv")
 X_test  = pd.read_csv(f"{BASE_DIR}/X_test_tree.csv")
+
+# --- Load raw temporal splits to get province + target (province was
+#     dropped from the feature set, so pull it back in by row order --
+#     row alignment between X_train_tree.csv and train_temporal.csv was
+#     verified independently before relying on this) ---
 train_raw = pd.read_csv(f"{BASE_DIR}/train_temporal.csv")
 test_raw  = pd.read_csv(f"{BASE_DIR}/test_temporal.csv")
 
 TARGET = "sprdistm"
 PERCENTILE = 0.90
 
+# --- Per-province thresholds, computed on TRAIN only (no leakage) ---
 province_thresholds = train_raw.groupby("province")[TARGET].quantile(PERCENTILE)
 print("Per-province 90th percentile thresholds (train only):")
 print(province_thresholds.to_string())
 
-y_train_clf_prov = (train_raw[TARGET] >= train_raw["province"].map(province_thresholds)).astype(int)
-y_test_clf_prov  = (test_raw[TARGET]  >= test_raw["province"].map(province_thresholds)).astype(int)
+# --- Build province-specific binary labels ---
+y_train_clf_prov = (
+    train_raw[TARGET] >= train_raw["province"].map(province_thresholds)
+).astype(int)
+y_test_clf_prov = (
+    test_raw[TARGET] >= test_raw["province"].map(province_thresholds)
+).astype(int)
 
+print(f"\nPositive rate (train, province-specific target): {y_train_clf_prov.mean():.1%}")
+print(f"Positive rate (test,  province-specific target): {y_test_clf_prov.mean():.1%}")
+
+# --- Same categorical handling as primary classifier ---
 X_train["ecozone"] = X_train["ecozone"].astype("category")
 X_test["ecozone"]  = X_test["ecozone"].astype("category")
 cat_cols = X_train.select_dtypes(include="category").columns.tolist()
+fire_ids = train_raw["ID"]
 
 def objective(trial):
     scale_pos_weight = (y_train_clf_prov == 0).sum() / (y_train_clf_prov == 1).sum()
     params = {
-        "objective": "binary", "metric": "average_precision", "verbosity": -1,
+        "objective": "binary",
+        "metric": "average_precision",
+        "verbosity": -1,
         "scale_pos_weight": scale_pos_weight,
         "num_leaves": trial.suggest_int("num_leaves", 15, 127),
         "max_depth": trial.suggest_int("max_depth", 3, 12),
@@ -53,9 +73,9 @@ def objective(trial):
         "min_child_samples": trial.suggest_int("min_child_samples", 10, 100),
     }
     model = lgb.LGBMClassifier(**params, random_state=42)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
     scores = cross_val_score(
-        model, X_train, y_train_clf_prov, cv=cv,
+        model, X_train, y_train_clf_prov, groups=fire_ids, cv=cv,
         scoring="average_precision",
         params={"categorical_feature": cat_cols} if cat_cols else None
     )
@@ -81,10 +101,12 @@ print("\n--- Test performance @ 0.5 threshold ---")
 print("ROC-AUC:", round(roc_auc_score(y_test_clf_prov, y_proba_prov_test), 4))
 print("PR-AUC: ", round(average_precision_score(y_test_clf_prov, y_proba_prov_test), 4))
 
-# --- Validation split carved out of TRAIN only, for threshold selection ---
-X_fit, X_val, y_fit, y_val = train_test_split(
-    X_train, y_train_clf_prov, test_size=0.2, stratify=y_train_clf_prov, random_state=42
-)
+# --- Validation split carved out of TRAIN only, grouped by fire ID ---
+group_kfold = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+fit_idx, val_idx = next(group_kfold.split(X_train, y_train_clf_prov, groups=fire_ids))
+X_fit, X_val = X_train.iloc[fit_idx], X_train.iloc[val_idx]
+y_fit, y_val = y_train_clf_prov.iloc[fit_idx], y_train_clf_prov.iloc[val_idx]
+
 scale_pos_weight_fit = (y_fit == 0).sum() / (y_fit == 1).sum()
 
 val_model_prov = lgb.LGBMClassifier(

@@ -5,8 +5,9 @@ Task 3b (diagnostic) — False negative and false positive error analysis
 import pandas as pd
 import numpy as np
 import joblib
+from scipy import stats
 
-CHOSEN_THRESHOLD = 0.120  
+CHOSEN_THRESHOLD = 0.212
 
 X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
 y_test_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
@@ -96,24 +97,57 @@ numeric_cols = analysis_df.select_dtypes(include=[np.number]).columns
 numeric_cols = [c for c in numeric_cols if c not in
                 ["y_true", "y_pred", "proba", "fireday_approx", "month_bin"]]
 
-comparison = pd.DataFrame({
-    "false_negative_mean": false_negatives[numeric_cols].mean(),
-    "true_positive_mean": true_positives[numeric_cols].mean(),
-})
-comparison["diff"] = comparison["true_positive_mean"] - comparison["false_negative_mean"]
-comparison["abs_diff"] = comparison["diff"].abs()
-comparison = comparison.sort_values("abs_diff", ascending=False)
+def cohens_d(group1, group2):
+    n1, n2 = len(group1), len(group2)
+    pooled_std = np.sqrt(((n1 - 1) * group1.std()**2 + (n2 - 1) * group2.std()**2) / (n1 + n2 - 2))
+    return (group1.mean() - group2.mean()) / pooled_std if pooled_std > 0 else 0.0
 
-print("\n-- Feature means: false negatives vs true positives (top 15 by difference) --")
-print(comparison.head(15).to_string())
+def benjamini_hochberg(p_values, alpha=0.05):
+    """Returns adjusted p-values and a significance mask at the given FDR level."""
+    p_values = np.asarray(p_values)
+    n = len(p_values)
+    order = np.argsort(p_values)
+    ranked = p_values[order]
 
-comparison_fp = pd.DataFrame({
-    "false_positive_mean": false_positives[numeric_cols].mean(),
-    "true_negative_mean": true_negatives[numeric_cols].mean(),
-})
-comparison_fp["diff"] = comparison_fp["false_positive_mean"] - comparison_fp["true_negative_mean"]
-comparison_fp["abs_diff"] = comparison_fp["diff"].abs()
-comparison_fp = comparison_fp.sort_values("abs_diff", ascending=False)
+    adjusted = ranked * n / (np.arange(1, n + 1))
+    # enforce monotonicity from the largest p-value down
+    adjusted = np.minimum.accumulate(adjusted[::-1])[::-1]
+    adjusted = np.clip(adjusted, 0, 1)
 
-print("\n-- Feature means: false positives vs true negatives (top 15 by difference) --")
-print(comparison_fp.head(15).to_string())
+    p_adj = np.empty(n)
+    p_adj[order] = adjusted
+    return p_adj, p_adj < alpha
+
+def significance_table(group_a, group_b, cols):
+    rows = []
+    for col in cols:
+        a, b = group_a[col].dropna(), group_b[col].dropna()
+        if len(a) < 2 or len(b) < 2:
+            continue
+        t_stat, p_val = stats.ttest_ind(a, b, equal_var=False)
+        d = cohens_d(a, b)
+        rows.append({
+            "feature": col,
+            "mean_group_a": a.mean(),
+            "mean_group_b": b.mean(),
+            "cohens_d": d,
+            "abs_cohens_d": abs(d),
+            "p_value": p_val,
+        })
+    df = pd.DataFrame(rows)
+    df["p_adj"], df["significant_fdr_05"] = benjamini_hochberg(df["p_value"].values)
+    return df.sort_values("abs_cohens_d", ascending=False)
+
+fn_sig = significance_table(false_negatives, true_positives, numeric_cols)
+fn_sig = fn_sig.rename(columns={"mean_group_a": "false_negative_mean", "mean_group_b": "true_positive_mean"})
+print("\n-- Feature comparison: false negatives vs true positives --")
+print("Ranked by standardized effect size (Cohen's d), significance FDR-corrected across all features tested")
+print(fn_sig.head(15).to_string(index=False))
+print(f"\nFeatures surviving FDR correction (p_adj < 0.05): {fn_sig['significant_fdr_05'].sum()} of {len(fn_sig)}")
+
+fp_sig = significance_table(false_positives, true_negatives, numeric_cols)
+fp_sig = fp_sig.rename(columns={"mean_group_a": "false_positive_mean", "mean_group_b": "true_negative_mean"})
+print("\n-- Feature comparison: false positives vs true negatives --")
+print("Ranked by standardized effect size (Cohen's d), significance FDR-corrected across all features tested")
+print(fp_sig.head(15).to_string(index=False))
+print(f"\nFeatures surviving FDR correction (p_adj < 0.05): {fp_sig['significant_fdr_05'].sum()} of {len(fp_sig)}")

@@ -3,13 +3,12 @@ Task 3b — Sensitivity analysis: 85th percentile target threshold
 19_threshold_85pct_sensitivity.py
 
 Tests an alternative target definition (85th percentile instead of 90th)
-on the same feature set, to check how sensitive classification performance
-is to the choice of "high-spread" cutoff. 90th percentile remains the
-primary target definition; this serves as a documented robustness check.
-
-The F2-optimal threshold is selected on a validation split carved out of
-TRAIN only, not on test. Test is touched exactly once, at the end, purely
-to report performance at the already-fixed threshold.
+on the same feature set, to check how sensitive classification
+performance is to the choice of "high-spread" cutoff. 90th percentile
+remains the primary target definition; this serves as a documented
+robustness check. Threshold selection uses the F2-optimal point, selected
+on a validation split grouped by fire ID, same protocol as the primary
+LightGBM model.
 """
 import pandas as pd
 import numpy as np
@@ -17,7 +16,7 @@ import lightgbm as lgb
 import optuna
 import joblib
 import os
-from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
 from sklearn.metrics import (
     average_precision_score, roc_auc_score, precision_recall_curve,
     confusion_matrix, classification_report, precision_score, recall_score
@@ -30,6 +29,7 @@ X_test["ecozone"]  = X_test["ecozone"].astype("category")
 
 y_train_reg = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train.csv").iloc[:, 0]
 y_test_reg  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test.csv").iloc[:, 0]
+train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
 
 THRESHOLD_85 = y_train_reg.quantile(0.85)
 print(f"85th percentile threshold: {THRESHOLD_85:.2f} m/day (90th percentile was 984.44)")
@@ -41,6 +41,7 @@ print(f"\nTrain positives: {y_train_clf_85.sum()}")
 print(f"Test positives:  {y_test_clf_85.sum()}")
 
 cat_cols = X_train.select_dtypes(include="category").columns.tolist()
+fire_ids = train_raw["ID"]
 
 def objective(trial):
     scale_pos_weight = (y_train_clf_85 == 0).sum() / (y_train_clf_85 == 1).sum()
@@ -54,9 +55,9 @@ def objective(trial):
         "min_child_samples": trial.suggest_int("min_child_samples", 10, 100),
     }
     model = lgb.LGBMClassifier(**params, random_state=42)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
     scores = cross_val_score(
-        model, X_train, y_train_clf_85, cv=cv,
+        model, X_train, y_train_clf_85, groups=fire_ids, cv=cv,
         scoring="average_precision",
         params={"categorical_feature": cat_cols} if cat_cols else None
     )
@@ -83,10 +84,12 @@ print("\n--- Test performance @ 0.5 threshold ---")
 print("ROC-AUC:", round(roc_auc_score(y_test_clf_85, y_proba_85_test), 4))
 print("PR-AUC: ", round(average_precision_score(y_test_clf_85, y_proba_85_test), 4))
 
-# --- Validation split carved out of TRAIN only, for threshold selection ---
-X_fit, X_val, y_fit, y_val = train_test_split(
-    X_train, y_train_clf_85, test_size=0.2, stratify=y_train_clf_85, random_state=42
-)
+# --- Validation split carved out of TRAIN only, grouped by fire ID ---
+group_kfold = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+fit_idx, val_idx = next(group_kfold.split(X_train, y_train_clf_85, groups=fire_ids))
+X_fit, X_val = X_train.iloc[fit_idx], X_train.iloc[val_idx]
+y_fit, y_val = y_train_clf_85.iloc[fit_idx], y_train_clf_85.iloc[val_idx]
+
 scale_pos_weight_fit = (y_fit == 0).sum() / (y_fit == 1).sum()
 
 val_model_85 = lgb.LGBMClassifier(

@@ -1,16 +1,22 @@
 """
-Task 3b — Random Forest classifier: training + Optuna tuning
+Task 3b — Random Forest classifier: training and Optuna tuning
 14_rf_classifier.py
+
 Comparison baseline for the LightGBM classifier above.
 Uses class_weight='balanced' for imbalance handling (no SMOTE).
 Tuning objective: PR-AUC, same protocol as LightGBM for fair comparison.
+
+Cross-validation is grouped by fire ID (StratifiedGroupKFold), matching
+the fire-grouped cross-validation used throughout the Phase 2 regression
+models, so that no fire contributes rows to both the training and
+validation portion of any fold.
 """
 import pandas as pd
 import numpy as np
 import joblib
 import os
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
 from sklearn.metrics import (
     average_precision_score, roc_auc_score, precision_score,
     recall_score, f1_score, confusion_matrix, classification_report
@@ -21,11 +27,15 @@ X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
 X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
 y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
 y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
 
 cat_cols = ["ecozone"]
 X_train_rf = pd.get_dummies(X_train, columns=cat_cols, drop_first=True)
 X_test_rf  = pd.get_dummies(X_test, columns=cat_cols, drop_first=True)
 X_train_rf, X_test_rf = X_train_rf.align(X_test_rf, join="left", axis=1, fill_value=0)
+
+fire_ids = train_raw["ID"]
+print(f"Unique fires in train: {fire_ids.nunique()}")
 
 def objective(trial):
     params = {
@@ -36,12 +46,12 @@ def objective(trial):
         "n_jobs": -1,
     }
     model = RandomForestClassifier(**params, random_state=42)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    scores = cross_val_score(model, X_train_rf, y_train_clf, cv=cv, scoring="average_precision")
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_val_score(model, X_train_rf, y_train_clf, groups=fire_ids, cv=cv, scoring="average_precision")
     return scores.mean()
 
-sampler_rf = optuna.samplers.TPESampler(seed=42)
-study_rf = optuna.create_study(direction="maximize", sampler=sampler_rf)
+sampler = optuna.samplers.TPESampler(seed=42)
+study_rf = optuna.create_study(direction="maximize", sampler=sampler)
 study_rf.optimize(objective, n_trials=40, show_progress_bar=True)
 
 print("Best CV PR-AUC:", round(study_rf.best_value, 4))

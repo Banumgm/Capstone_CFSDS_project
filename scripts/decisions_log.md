@@ -265,18 +265,33 @@ reported test precision/recall/F2 accordingly (0.413/0.754/0.647 →
 0.513/0.601/0.581) — the corrected numbers are the accurate, generalizable
 estimates; the original numbers were optimistic.
 
-**LightGBM chosen as the final classifier over Random Forest, despite RF
-showing a marginally higher raw F2-score at its own operating point
-(0.602 vs. 0.581).** LightGBM leads on every threshold-independent
-ranking metric (CV PR-AUC 0.7075 vs. 0.6521, test PR-AUC 0.5654 vs.
-0.5332, test ROC-AUC 0.9396 vs. 0.9283). A matched-recall comparison
-(both models evaluated at RF's own F2-optimal recall of 0.839, on the
-same validation split) showed LightGBM achieving higher precision (0.529
-vs. 0.463) and F2 (0.751 vs. 0.722) at that same recall level — indicating
-RF's raw F2 "win" reflected where its threshold happened to sit on its
-own precision-recall curve, not a genuine ranking-quality advantage. This
-comparison is based on a single validation split rather than repeated
-resampling, so it is treated as suggestive rather than conclusive.
+**Threshold-selection and CV further corrected to group by fire ID, not
+just stratify by class.** The 80/20 stratified split used in the previous
+correction still allowed a single fire's rows to fall on both sides of
+the fit/validation split, reintroducing at a smaller scale the same
+fire-level leakage the train/test split itself was designed to prevent
+in Phase 2. All Optuna cross-validation and all fit/validation splits
+used for F2-threshold selection (LightGBM, Random Forest, calibration
+check, and the 85th-percentile and province-specific sensitivity
+analyses) were changed to `StratifiedGroupKFold` / a group-based split
+grouped by fire ID, matching the Phase 2 protocol. This is the final
+adopted methodology. It moved the primary LightGBM threshold from 0.120
+to 0.212, with test precision/recall/F2 of 0.468/0.700/0.637 (up from
+0.513/0.601/0.581) — these fire-grouped numbers are the ones carried into
+the final report and the Power BI dashboard.
+
+**LightGBM chosen as the final classifier over Random Forest and
+Logistic Regression, leading on every metric evaluated.** Under the
+fire-grouped protocol, LightGBM leads on CV PR-AUC (0.6674 vs. 0.6197 RF,
+0.5225 LogReg), test ROC-AUC (0.9404 vs. 0.9284, 0.8894), test PR-AUC
+(0.5719 vs. 0.5327, 0.3751), and F2-score at its own operating threshold
+(0.637 vs. 0.619 RF) — with no metric on which it trails either
+alternative. (An earlier comparison, run before the fire-grouping fix
+above, had found Random Forest's raw F2 marginally ahead of LightGBM's at
+their respective 80/20-stratified operating points, 0.602 vs. 0.581, and
+required a matched-recall argument to justify choosing LightGBM anyway;
+that comparison is superseded and no longer needed now that LightGBM
+leads outright.)
 
 **Isotonic calibration tested and not adopted.** A calibrated version of
 the LightGBM classifier (fit on a train-derived calibration holdout, F2
@@ -285,33 +300,41 @@ threshold also selected on that holdout) showed a lower Brier score
 discrimination on every other metric (PR-AUC 0.5404 vs. 0.5654, F2 0.573
 vs. 0.581) than the uncalibrated model. Since the deployed use case relies
 on ranking/threshold performance rather than well-calibrated probability
-values in isolation, the uncalibrated model was retained.
+values in isolation, the uncalibrated model was retained. *(Flag: these
+figures predate the fire-grouping fix above and have not yet been
+re-run under it — regenerate before finalizing the report.)*
 
 **Sensitivity analysis: 85th-percentile target definition tested as an
-alternative to the 90th-percentile primary target, not adopted.** The
-85th-percentile model showed stronger CV PR-AUC (0.7857 vs. 0.7075) and
-higher recall/F2 at its own validation-selected F2-optimal point (recall
-0.778 vs. 0.601, F2 0.683 vs. 0.581), but its F2-optimal threshold (0.003)
-is unusually low, suggesting a flatter probability distribution near the
-decision boundary rather than sharper class separation. 90th percentile
-was retained as the primary definition for consistency with the Phase 2
-regression framing and because a rarer, more extreme threshold better
-matches the operational framing of an evacuation/resource-allocation
-alert (alert rarity supports trust and actionability). Documented as a
-robustness check.
+alternative to the 90th-percentile primary target, not adopted.** Under
+the fire-grouped protocol, the 85th-percentile model shows a stronger CV
+PR-AUC (0.7341 vs. 0.6674), test PR-AUC (0.6551 vs. 0.5719), precision
+(0.519 vs. 0.468), and F2 (0.656 vs. 0.637) than the 90th-percentile
+primary model, with essentially equivalent recall (0.702 vs. 0.700); only
+test ROC-AUC modestly favors the 90th percentile (0.9404 vs. 0.9307).
+90th percentile was retained as the primary definition for consistency
+with the Phase 2 regression framing and because a rarer, more extreme
+threshold (589.33 m/day at the 85th percentile vs. 984.44 m/day at the
+90th) better matches the operational framing of an evacuation/resource-
+allocation alert (alert rarity supports trust and actionability); this is
+a deliberate operational tradeoff against a measured performance cost,
+not a statistically-driven choice. Documented as a robustness check.
 
 **Sensitivity analysis: per-province (BC/AB) 90th-percentile thresholds
 tested instead of one combined threshold, not adopted.** Alberta's raw
-90th percentile is ~31% higher than British Columbia's (1,291 vs. 843
-m/day) on train data, reflecting the same regime difference noted in the
-Phase 2 spatial-holdout results. A model trained against per-province
-thresholds performed close to the combined-threshold primary model
-(test F2 = 0.597 vs. 0.581 — marginally higher), but was not adopted:
-the gain is within the range of run-to-run variation rather than a clear
-improvement, and a province-specific threshold definition adds deployment
-complexity and weakens the interpretability of "high-spread day" as a
-single, portable operational definition. Documented as a robustness check
-and a candidate for future work if province-level alerting is required
-operationally.
+90th percentile is ~31% higher than British Columbia's (1,291.39 vs.
+843.30 m/day) on train data, reflecting the same regime difference noted
+in the Phase 2 spatial-holdout results. Under the fire-grouped protocol,
+a model trained against per-province thresholds reaches a test F2 of
+0.638, effectively tied with the combined-threshold primary model
+(0.637), while trailing it on every aggregate ranking metric (CV PR-AUC
+0.6437 vs. 0.6674, test ROC-AUC 0.9385 vs. 0.9404, test PR-AUC 0.5498 vs.
+0.5719). Critically, a province-specific threshold does not equalize
+performance across provinces: Alberta still outperforms British Columbia
+on both precision (0.396 vs. 0.356) and recall (0.805 vs. 0.764) even
+under its own tailored threshold, indicating the gap reflects a genuine
+difference in learnability between provinces rather than an artifact of
+the shared target definition. Not adopted as primary: it adds deployment
+complexity without resolving the province-level performance gap it was
+intended to address. Documented as a robustness check.
 
 <!-- Add new entries above this line -->
