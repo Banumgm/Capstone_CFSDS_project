@@ -34,7 +34,7 @@ comparison_thresholds = pd.DataFrame([
 print(comparison_thresholds.to_string(index=False))
 
 comparison_thresholds.to_csv(
-    "/Workspace/Capstone_Group1/processed/threshold_sensitivity_comparison.csv", index=False
+    "processed/threshold_sensitivity_comparison.csv", index=False
 )
 print("\nSaved: threshold_sensitivity_comparison.csv")
 

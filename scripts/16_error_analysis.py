@@ -9,12 +9,12 @@ from scipy import stats
 
 CHOSEN_THRESHOLD = 0.212
 
-X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
-y_test_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
+X_test  = pd.read_csv("processed/X_test_tree.csv")
+y_test_clf = pd.read_csv("processed/y_test_clf.csv").iloc[:, 0]
 
 X_test["ecozone"] = X_test["ecozone"].astype("category")
 
-lgbm_clf = joblib.load("/Workspace/Capstone_Group1/models/lgbm_classifier.pkl")
+lgbm_clf = joblib.load("models/lgbm_classifier.pkl")
 y_proba = lgbm_clf.predict_proba(X_test)[:, 1]
 y_pred = (y_proba >= CHOSEN_THRESHOLD).astype(int)
 
