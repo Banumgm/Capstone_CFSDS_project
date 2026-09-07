@@ -7,7 +7,7 @@ so no manual value is needed for RF / Logistic Regression.
 """
 import pandas as pd
 
-y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
+y_train_clf = pd.read_csv("processed/y_train_clf.csv").iloc[:, 0]
 
 n_neg = (y_train_clf == 0).sum()
 n_pos = (y_train_clf == 1).sum()
