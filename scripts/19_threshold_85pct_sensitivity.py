@@ -22,14 +22,14 @@ from sklearn.metrics import (
     confusion_matrix, classification_report, precision_score, recall_score
 )
 
-X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
-X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
+X_train = pd.read_csv("processed/X_train_tree.csv")
+X_test  = pd.read_csv("processed/X_test_tree.csv")
 X_train["ecozone"] = X_train["ecozone"].astype("category")
 X_test["ecozone"]  = X_test["ecozone"].astype("category")
 
-y_train_reg = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train.csv").iloc[:, 0]
-y_test_reg  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test.csv").iloc[:, 0]
-train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
+y_train_reg = pd.read_csv("processed/y_train.csv").iloc[:, 0]
+y_test_reg  = pd.read_csv("processed/y_test.csv").iloc[:, 0]
+train_raw   = pd.read_csv("processed/train_temporal.csv")
 
 THRESHOLD_85 = y_train_reg.quantile(0.85)
 print(f"85th percentile threshold: {THRESHOLD_85:.2f} m/day (90th percentile was 984.44)")
