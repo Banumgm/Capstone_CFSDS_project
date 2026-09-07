@@ -13,7 +13,7 @@ import joblib
 import shap
 import lightgbm as lgb
 
-BASE_DIR = "processed"
+BASE_DIR = "/Workspace/Capstone_Group1/processed"
 
 print("1. Loading data and fitting final LightGBM Regressor for SHAP extraction...")
 X_train = pd.read_csv(f"{BASE_DIR}/X_train_tree.csv")
