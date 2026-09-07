@@ -21,7 +21,7 @@ from sklearn.metrics import (
     confusion_matrix, classification_report, precision_score, recall_score
 )
 
-BASE_DIR = "/Workspace/Capstone_Group1/processed" if os.path.exists("/Workspace") else "processed"
+BASE_DIR = "processed" if os.path.exists("/Workspace") else "processed"
 
 # --- Load feature sets (same as primary classifier) ---
 X_train = pd.read_csv(f"{BASE_DIR}/X_train_tree.csv")
