@@ -8,29 +8,29 @@ import pandas as pd
 comparison = pd.DataFrame([
     {
         "model": "LightGBM",
-        "cv_pr_auc": 0.7075,
-        "test_roc_auc": 0.9396,
-        "test_pr_auc": 0.5654,
-        "f2_threshold": 0.120,
-        "precision_at_f2": 0.513,
-        "recall_at_f2": 0.601,
-        "f2_score": 0.581,
+        "cv_pr_auc": 0.6674,
+        "test_roc_auc": 0.9404,
+        "test_pr_auc": 0.5719,
+        "f2_threshold": 0.212,
+        "precision_at_f2": 0.468,
+        "recall_at_f2": 0.700,
+        "f2_score": 0.637,
     },
     {
         "model": "Random Forest",
-        "cv_pr_auc": 0.6521,
-        "test_roc_auc": 0.9283,
-        "test_pr_auc": 0.5332,
-        "f2_threshold": 0.319,
-        "precision_at_f2": 0.453,
-        "recall_at_f2": 0.656,
-        "f2_score": 0.602,
+        "cv_pr_auc": 0.6197,
+        "test_roc_auc": 0.9284,
+        "test_pr_auc": 0.5327,
+        "f2_threshold": 0.255,
+        "precision_at_f2": 0.386,
+        "recall_at_f2": 0.728,
+        "f2_score": 0.619,
     },
     {
         "model": "Logistic Regression",
-        "cv_pr_auc": 0.5412,
-        "test_roc_auc": 0.8918,
-        "test_pr_auc": 0.3810,
+        "cv_pr_auc": 0.5225,
+        "test_roc_auc": 0.8894,
+        "test_pr_auc": 0.3751,
         "f2_threshold": None,
         "precision_at_f2": None,
         "recall_at_f2": None,
@@ -41,22 +41,21 @@ print(comparison.to_string(index=False))
 comparison.to_csv("/Workspace/Capstone_Group1/processed/classification_model_comparison.csv", index=False)
 print("\nSaved: classification_model_comparison.csv")
 print("""
-Rationale: LightGBM achieved the best CV PR-AUC (0.7075 vs 0.6521), test
-ROC-AUC (0.9396 vs 0.9283), and test PR-AUC (0.5654 vs 0.5332) compared to
-Random Forest. At each model's own validation-selected F2-optimal operating
-point, Random Forest shows a higher raw F2-score (0.602 vs 0.581), but this
-reflects where each model's threshold happens to sit on its own precision-
-recall curve, not a genuine ranking-quality advantage: at matched recall
-(0.839, RF's own F2-optimal recall), LightGBM achieves meaningfully higher
-precision (0.529 vs 0.463) and a higher F2 (0.751 vs 0.722) than RF's
-F2-optimal point. LightGBM's PR curve dominates Random Forest's across the
-board, confirming it is the better-separating model; Random Forest's
-apparent F2 edge at default operating points is a threshold artifact.
+Rationale: LightGBM achieves the best cross-validated PR-AUC (0.6674 vs
+0.6197), test ROC-AUC (0.9404 vs 0.9284), test PR-AUC (0.5719 vs 0.5327),
+and the best F2-score at its own validation-selected operating threshold
+(0.637 vs 0.619) compared to Random Forest -- leading on every metric
+evaluated, both threshold-independent and at the deployed operating point.
 Logistic Regression trails both tree-based models as expected (a linear
 decision boundary cannot capture nonlinear fire-behavior interactions),
-but is retained as an interpretability baseline: its standardized
-coefficients also support H1 (bui, dmc, and ffmc -- all FWI-related terms
--- outweigh the largest topographic term, aspect_cos), mirroring the role
-Tweedie GLM plays for the regression models in Phase 2.
-Chosen model: LightGBM, F2-optimal threshold = 0.120.
+but is retained as an interpretability baseline. Its standardized
+coefficients show a mixed picture relative to H1: of the FWI-family terms
+present in its top 15 coefficients (ffmc, dmc), both are outranked in
+magnitude by the two topographic terms present (aspect_cos, slope), and
+the single largest FWI coefficient found in an earlier version of this
+analysis (bui) does not appear in the current top 15 at all. This does
+not resolve H1 either way -- the formal test is the SHAP analysis
+scheduled for Phase 4 -- but it means the coefficient evidence should not
+be read as supporting the FWI-dominance hypothesis at this stage.
+Chosen model: LightGBM, F2-optimal threshold = 0.212.
 """)

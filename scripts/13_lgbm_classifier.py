@@ -1,15 +1,23 @@
 """
-Task 3b — LightGBM classifier: training + Optuna tuning
+Task 3b — LightGBM classifier: training and Optuna tuning
 13_lgbm_classifier.py
+
 Primary classification model for high-spread vs low-spread days.
 Uses scale_pos_weight for imbalance handling (no SMOTE).
 Tuning objective: PR-AUC (average precision), not accuracy/log-loss.
+
+Cross-validation is grouped by fire ID (StratifiedGroupKFold), matching
+the fire-grouped cross-validation used throughout the Phase 2 regression
+models. A single fire can contribute multiple burn-day rows; grouping by
+fire ID ensures every row from a given fire stays on one side of each
+fold, so the model is always evaluated on fires it has never seen any
+day of, not just unseen days.
 """
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
 import optuna
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
 from sklearn.metrics import (
     average_precision_score, roc_auc_score, precision_score,
     recall_score, f1_score, confusion_matrix, classification_report
@@ -19,14 +27,18 @@ X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
 X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
 y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
 y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
 
 X_train["ecozone"] = X_train["ecozone"].astype("category")
 X_test["ecozone"]  = X_test["ecozone"].astype("category")
 
 SCALE_POS_WEIGHT = (y_train_clf == 0).sum() / (y_train_clf == 1).sum()
 cat_cols = X_train.select_dtypes(include="category").columns.tolist()
+fire_ids = train_raw["ID"]
+
 print(f"Categorical columns (native): {cat_cols}")
 print(f"Feature count: {X_train.shape[1]}")
+print(f"Unique fires in train: {fire_ids.nunique()}")
 
 def objective(trial):
     params = {
@@ -41,9 +53,9 @@ def objective(trial):
         "min_child_samples": trial.suggest_int("min_child_samples", 10, 100),
     }
     model = lgb.LGBMClassifier(**params, random_state=42)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
     scores = cross_val_score(
-        model, X_train, y_train_clf, cv=cv,
+        model, X_train, y_train_clf, groups=fire_ids, cv=cv,
         scoring="average_precision",
         params={"categorical_feature": cat_cols} if cat_cols else None
     )

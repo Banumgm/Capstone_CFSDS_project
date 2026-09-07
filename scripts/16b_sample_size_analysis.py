@@ -16,8 +16,8 @@ if eco_cols:
         print(f"{col}: n_true_high_spread_days={n_true_pos_days}, n_missed={n_fn}, "
               f"n_true_low_spread_days={n_true_neg_days}, n_false_alarms={n_fp}")
 elif "ecozone" in analysis_df.columns:
-    grp_pos = analysis_df[analysis_df["y_true"] == 1].groupby("ecozone").size()
-    grp_neg = analysis_df[analysis_df["y_true"] == 0].groupby("ecozone").size()
+    grp_pos = analysis_df[analysis_df["y_true"] == 1].groupby("ecozone", observed=True).size()
+    grp_neg = analysis_df[analysis_df["y_true"] == 0].groupby("ecozone", observed=True).size()
     print("True high-spread day counts by ecozone:")
     print(grp_pos)
     print("\nTrue low-spread day counts by ecozone:")

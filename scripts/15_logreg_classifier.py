@@ -1,16 +1,21 @@
 """
 Task 3b — Logistic Regression: interpretability baseline
 15_logreg_classifier.py
+
 Uses the linear-branch features (one-hot + StandardScaler, same as Tweedie
 GLM). Included for H1 interpretability via standardized coefficients, not
 expected to compete with tree models on raw performance.
+
+Cross-validation is grouped by fire ID (StratifiedGroupKFold), matching
+the fire-grouped cross-validation used throughout the Phase 2 regression
+models and the other two classifiers in this phase.
 """
 import pandas as pd
 import numpy as np
 import joblib
 import os
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
 from sklearn.metrics import (
     average_precision_score, roc_auc_score, precision_score,
     recall_score, f1_score, confusion_matrix, classification_report
@@ -21,6 +26,10 @@ X_train_lin = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_linear.c
 X_test_lin  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_linear.csv")
 y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
 y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
+
+fire_ids = train_raw["ID"]
+print(f"Unique fires in train: {fire_ids.nunique()}")
 
 def objective(trial):
     params = {
@@ -31,12 +40,12 @@ def objective(trial):
         "max_iter": 2000,
     }
     model = LogisticRegression(**params, random_state=42)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    scores = cross_val_score(model, X_train_lin, y_train_clf, cv=cv, scoring="average_precision")
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_val_score(model, X_train_lin, y_train_clf, groups=fire_ids, cv=cv, scoring="average_precision")
     return scores.mean()
 
-sampler_lr = optuna.samplers.TPESampler(seed=42)
-study_lr = optuna.create_study(direction="maximize", sampler=sampler_lr)
+sampler = optuna.samplers.TPESampler(seed=42)
+study_lr = optuna.create_study(direction="maximize", sampler=sampler)
 study_lr.optimize(objective, n_trials=25, show_progress_bar=True)
 
 print("Best CV PR-AUC:", round(study_lr.best_value, 4))
@@ -68,7 +77,6 @@ print(cm)
 report = classification_report(y_test_clf, y_pred)
 print(report)
 
-# Standardized coefficients — ranked by absolute value, for H1
 coef_df = pd.DataFrame({
     "feature": X_train_lin.columns,
     "coefficient": best_logreg.coef_[0]

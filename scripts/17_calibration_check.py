@@ -2,18 +2,19 @@
 Task 3b — Probability calibration check
 17_calibration_check.py
 
-Tests whether the LightGBM classifier's probabilities are well-calibrated
-under heavy class weighting, and whether isotonic calibration improves
-precision at the operating threshold. F2-optimal thresholds for both the
-uncalibrated and calibrated models are selected on a calibration holdout
-carved out of TRAIN only (X_calib/y_calib). Test is touched exactly once,
-at the end, to report performance at both already-fixed thresholds.
+Tests whether isotonic calibration improves the LightGBM classifier's
+probability estimates, which may be distorted by the heavy scale_pos_weight
+used to handle class imbalance. Calibration is fit on a holdout split from
+TRAIN only, grouped by fire ID so that no fire contributes rows to both
+the fit and calibration/validation portion. The base model is refit on
+the fit portion and calibrated on the held-out portion; the test set
+stays untouched until the final comparison.
 """
 import pandas as pd
 import numpy as np
 import joblib
 import lightgbm as lgb
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import (
     average_precision_score, roc_auc_score, brier_score_loss,
@@ -24,18 +25,22 @@ X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
 X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
 y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
 y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
 
 X_train["ecozone"] = X_train["ecozone"].astype("category")
 X_test["ecozone"]  = X_test["ecozone"].astype("category")
 cat_cols = X_train.select_dtypes(include="category").columns.tolist()
+fire_ids = train_raw["ID"]
 
 lgbm_clf = joblib.load("/Workspace/Capstone_Group1/models/lgbm_classifier.pkl")
 best_params = lgbm_clf.get_params()
 
-# --- Split a calibration/validation holdout out of TRAIN only (test stays untouched) ---
-X_fit, X_calib, y_fit, y_calib = train_test_split(
-    X_train, y_train_clf, test_size=0.2, stratify=y_train_clf, random_state=42
-)
+# --- Fit/calibration split carved out of TRAIN only, grouped by fire ID
+#     (test remains untouched until the final comparison below) ---
+group_kfold = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+fit_idx, calib_idx = next(group_kfold.split(X_train, y_train_clf, groups=fire_ids))
+X_fit, X_calib = X_train.iloc[fit_idx], X_train.iloc[calib_idx]
+y_fit, y_calib = y_train_clf.iloc[fit_idx], y_train_clf.iloc[calib_idx]
 
 scale_pos_weight_fit = (y_fit == 0).sum() / (y_fit == 1).sum()
 base_params = {k: v for k, v in best_params.items() if k != "scale_pos_weight"}
@@ -45,7 +50,7 @@ base_model.fit(X_fit, y_fit, categorical_feature=cat_cols)
 calibrated_model = CalibratedClassifierCV(base_model, method="isotonic", cv="prefit")
 calibrated_model.fit(X_calib, y_calib)
 
-# --- Threshold search for BOTH models happens on the calibration/validation holdout ---
+# --- Threshold search for BOTH models happens on the same calibration/validation split ---
 def f2_optimal_threshold(y_true, y_proba):
     precisions, recalls, thresholds = precision_recall_curve(y_true, y_proba)
     precisions, recalls = precisions[:-1], recalls[:-1]

@@ -3,21 +3,16 @@ Task 3b — Threshold selection
 13b_lgbm_threshold_selection.py
 
 Selects the F2-optimal decision threshold for the LightGBM classifier.
-The threshold is chosen on a validation split carved out of TRAIN only
-(same 80/20 pattern used in 17_calibration_check.py), never on the test
-set. Test-set probabilities are touched exactly once, at the end, purely
-to report performance at the already-fixed threshold.
-
-The deployed model (lgbm_classifier.pkl) is unchanged -- it is still
-fit on 100% of train. A second model, fit on 80% of train with the same
-tuned hyperparameters, is used only to generate validation-set
-probabilities for threshold selection.
+The threshold is chosen on a validation split carved out of TRAIN only,
+grouped by fire ID so that no fire contributes rows to both the fit and
+validation portion. Test-set probabilities are touched exactly once, at
+the end, purely to report performance at the already-fixed threshold.
 """
 import pandas as pd
 import numpy as np
 import joblib
 import lightgbm as lgb
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.metrics import (
     precision_recall_curve, confusion_matrix, classification_report,
     precision_score, recall_score
@@ -27,25 +22,28 @@ X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
 X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
 y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
 y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
 
 X_train["ecozone"] = X_train["ecozone"].astype("category")
 X_test["ecozone"]  = X_test["ecozone"].astype("category")
 cat_cols = X_train.select_dtypes(include="category").columns.tolist()
+fire_ids = train_raw["ID"]
 
 # --- Deployed model (fit on 100% of train) -- used only for the final,
 #     single, end-of-cell evaluation on test. Not used for threshold search. ---
 lgbm_clf = joblib.load("/Workspace/Capstone_Group1/models/lgbm_classifier.pkl")
 
-# --- Validation split carved out of TRAIN only, same 80/20 pattern as the
-#     calibration check. A second model, with the same tuned hyperparameters,
-#     is fit on the 80% portion purely to generate validation probabilities. ---
-X_fit, X_val, y_fit, y_val = train_test_split(
-    X_train, y_train_clf, test_size=0.2, stratify=y_train_clf, random_state=42
-)
+# --- Validation split carved out of TRAIN only, grouped by fire ID. A
+#     second model, with the same tuned hyperparameters, is fit on the
+#     fit portion purely to generate validation probabilities. ---
+group_kfold = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+fit_idx, val_idx = next(group_kfold.split(X_train, y_train_clf, groups=fire_ids))
+X_fit, X_val = X_train.iloc[fit_idx], X_train.iloc[val_idx]
+y_fit, y_val = y_train_clf.iloc[fit_idx], y_train_clf.iloc[val_idx]
 
 BEST_PARAMS = {
-    "num_leaves": 73, "max_depth": 10, "learning_rate": 0.06155574273677577,
-    "n_estimators": 495, "min_child_samples": 74
+    "num_leaves": 47, "max_depth": 11, "learning_rate": 0.031135700994978612,
+    "n_estimators": 456, "min_child_samples": 49
 }
 scale_pos_weight_fit = (y_fit == 0).sum() / (y_fit == 1).sum()
 
