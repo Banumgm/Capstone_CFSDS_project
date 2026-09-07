@@ -337,4 +337,17 @@ the shared target definition. Not adopted as primary: it adds deployment
 complexity without resolving the province-level performance gap it was
 intended to address. Documented as a robustness check.
 
+### Phase 4: Diagnostics & Interpretation
+
+**Dual-Model Operational Framework**
+*Decision:* Retain the LightGBM continuous regression model for baseline resource planning, but mandate a supplementary LightGBM binary classifier for extreme events.
+*Justification:* Phase 4 subset evaluation demonstrated that the regression model systematically underpredicts 90th-percentile catastrophic outliers (MAE = 1,614.84 m/day). The classification model is strictly required as a dedicated early-warning layer.
+
+**H1 Validation (Feature Drivers)**
+*Decision:* Reject Hypothesis 1 (FWI weather dominance) for extreme-spread classification.
+*Justification:* TreeSHAP diagnostics revealed that while FWI variables dictate everyday baseline spread, extreme 90th-percentile events are fundamentally gated by macro-seasonal timing (`fireday_cos`) and hydrological continuity (`hydrodens2k`), which exert 2–3x more impact than weather features alone.
+
+**Classifier Threshold Configuration**
+*Decision:* Deploy the LightGBM classifier at an operating threshold of 0.212 instead of the default 0.50.
+*Justification:* A 0.50 cutoff wrongly assumes equal costs for False Positives and False Negatives. Optimizing specifically for the F2-score heavily penalizes missed extreme fires, successfully raising operational recall to 70.0%.
 <!-- Add new entries above this line -->
