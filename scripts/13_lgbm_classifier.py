@@ -23,11 +23,11 @@ from sklearn.metrics import (
     recall_score, f1_score, confusion_matrix, classification_report
 )
 
-X_train = pd.read_csv("/Workspace/Capstone_Group1/processed/X_train_tree.csv")
-X_test  = pd.read_csv("/Workspace/Capstone_Group1/processed/X_test_tree.csv")
-y_train_clf = pd.read_csv("/Workspace/Capstone_Group1/processed/y_train_clf.csv").iloc[:, 0]
-y_test_clf  = pd.read_csv("/Workspace/Capstone_Group1/processed/y_test_clf.csv").iloc[:, 0]
-train_raw   = pd.read_csv("/Workspace/Capstone_Group1/processed/train_temporal.csv")
+X_train = pd.read_csv("processed/X_train_tree.csv")
+X_test  = pd.read_csv("processed/X_test_tree.csv")
+y_train_clf = pd.read_csv("processed/y_train_clf.csv").iloc[:, 0]
+y_test_clf  = pd.read_csv("processed/y_test_clf.csv").iloc[:, 0]
+train_raw   = pd.read_csv("processed/train_temporal.csv")
 
 X_train["ecozone"] = X_train["ecozone"].astype("category")
 X_test["ecozone"]  = X_test["ecozone"].astype("category")
