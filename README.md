@@ -193,6 +193,7 @@ python scripts/30_classification_robustness.py
 python scripts/31_shap_visualizations.py
 python scripts/32_shap_tp_fn_analysis.py
 python scripts/33_classification_spatial_validation.py
+python scripts/36_build_dashboard_exports.py
 
 # Dashboard exports (run last, after all models are finalized)
 python scripts/36_build_dashboard_exports.py
