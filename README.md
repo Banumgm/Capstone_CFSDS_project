@@ -142,44 +142,66 @@ Recall transfers consistently in both directions (~60%), but precision degrades 
 
 ## Pipeline / How to Reproduce
 
-Scripts are numbered in execution order and designed to be run sequentially; each reads the outputs of the previous step from `processed/`.
+All code lives in a single flat `scripts/` folder (not split into `src/phase*` subfolders). Scripts are numbered in execution order and designed to be run sequentially; each reads the outputs of the previous step from `processed/`. Suffixed scripts (`01b`, `12b`, `13b`, etc.) are follow-on diagnostic/sensitivity steps for the script they extend, not a separate phase.
+
+Before running anything, download the raw CFSDS annual CSVs from OSF (https://osf.io/f48ry/overview) and place them under `raw_data/` (not committed to this repository due to size — see `.gitignore`).
 
 ```bash
 # Phase 1 — Setup & data prep
-python src/phase1_data_prep/01_filter_bc_ab.py
-python src/phase1_data_prep/01b_eda.py
-python src/phase1_data_prep/02_clean.py
+python scripts/01_filter_bc_ab.py
+python scripts/01b_eda.py
+python scripts/02_clean.py
 
 # Phase 2 — Feature engineering + regression
-python src/phase2_regression/03_feature_engineering_common.py
-python src/phase2_regression/04_splits.py
-python src/phase2_regression/05_feature_engineering_linear.py
-python src/phase2_regression/06_feature_engineering_tree.py
-python src/phase2_regression/07_baseline_tweedie.py
-python src/phase2_regression/08_rf_regression.py
-python src/phase2_regression/09_final_models_lgb_xgb.py
-python src/phase2_regression/10_spatial_validation.py
-python src/phase2_regression/11_model_comparison_charts.py
+python scripts/03_feature_engineering_common.py
+python scripts/04_splits.py
+python scripts/05_feature_engineering_linear.py
+python scripts/06_feature_engineering_tree.py
+python scripts/07_baseline_tweedie.py
+python scripts/08_rf_regression.py
+python scripts/09_final_models_lgb_xgb.py
+python scripts/10_spatial_validation.py
+python scripts/11_model_comparison_charts.py
 
 # Phase 3 — Classification
-python src/phase3_classification/12_classification_target.py
-python src/phase3_classification/12b_class_weights.py
-python src/phase3_classification/13_lgbm_classifier.py
-# ... etc., in numeric order
+python scripts/12_classification_target.py
+python scripts/12b_class_weights.py
+python scripts/13_lgbm_classifier.py
+python scripts/13b_lgbm_threshold_selection.py
+python scripts/14_rf_classifier.py
+python scripts/14b_rf_threshold_selection.py
+python scripts/15_logreg_classifier.py
+python scripts/16_error_analysis.py
+python scripts/16b_sample_size_analysis.py
+python scripts/17_calibration_check.py
+python scripts/18_model_comparison.py
+python scripts/19_threshold_85pct_sensitivity.py
+python scripts/19b_threshold_sensitivity_comparison.py
+python scripts/20_classifier_config.py
+python scripts/21_threshold_province_sensitivity.py
+python scripts/22_province_threshold_sensitivity.py
+python scripts/22b_province_threshold_sample_check.py
 
 # Phase 4 — Diagnostics & SHAP
-python src/phase4_diagnostics/25_regression_shap.py
-# ... etc.
+python scripts/25_regression_shap.py
+python scripts/26_shap_classification.py
+python scripts/27_zero_separated_evaluation.py
+python scripts/28_regression_robustness.py
+python scripts/28b_tweedie_residuals.py
+python scripts/29_spatial_transfer.py
+python scripts/30_classification_robustness.py
+python scripts/31_shap_visualizations.py
+python scripts/32_shap_tp_fn_analysis.py
+python scripts/33_classification_spatial_validation.py
 
 # Dashboard exports (run last, after all models are finalized)
-python src/dashboard_export/34_dashboard_predictions_export.py
-python src/dashboard_export/35_dashboard_shap_export.py
-python src/dashboard_export/36_dashboard_global_shap_export.py
-python src/dashboard_export/37_dashboard_fire_conditions_export.py
+python scripts/36_build_dashboard_exports.py
+
 ```
 
-All scripts were originally developed and run on **Databricks** (paths default to `/Workspace/Capstone_Group1/processed`); most fall back to a local `processed/` directory if that path doesn't exist, for local reproduction.
+All scripts were originally developed and run on **Databricks** (paths default to `/Workspace/Capstone_Group1/processed`); most fall back to a local `processed/` directory if that path doesn't exist, for local reproduction. Alternatively, run `python run_all.py` to execute the full pipeline in one step.
 
+See [`scripts/decisions_log.md`](scripts/decisions_log.md) for the full record of methodological decisions and their rationale.
 ---
 
 ## Dashboard
@@ -196,9 +218,9 @@ A 4-page Power BI dashboard consumes four CSVs produced by the export scripts ab
 **Story flow:** *What is happening? → Where & how fast? → Why? → Can we trust it, and what should we do?*
 
 - **Page 1 — Situation Overview:** KPI cards, risk map, top SHAP drivers for the highest-priority fire, operational alerts
-- **Page 2 — Spread & Location:** spread trend over time, spread distribution vs. the 984.44 m/day threshold, top-10 fires, seasonal pattern
-- **Page 3 — What Drives Fire Spread:** global SHAP importance (regression/classification toggle), local SHAP for the selected fire, environmental conditions, fuel & landscape
-- **Page 4 — Trust & Act:** classification performance (precision/recall/F2), confusion matrix, predicted vs. actual scatter, BC vs. AB comparison, operational workflow
+- **Page 2 — How Fast is it Spreading:** global SHAP importance (regression/classification toggle), local SHAP for the selected fire, environmental conditions, fuel & landscape
+- **Page 3 — What Drives Fire Spread:** spread trend over time, spread distribution vs. the 984.44 m/day threshold, top-10 fires, seasonal pattern
+- **Page 4 — How Reliable are the predictions?:** classification performance (precision/recall/F2), confusion matrix, predicted vs. actual scatter, BC vs. AB comparison, operational workflow
 
 **Modeling notes carried into the data model:**
 - `global_shap_importance_powerbi` and `EnvThresholds` (environmental LOW/MODERATE/HIGH cutoffs, p33/p66 on TRAIN) are loaded **without relationships** to any fact table, so Fire ID/date slicers can never accidentally filter them.
