@@ -2,7 +2,7 @@
 
 **DAMO 699 Capstone Project | Master of Data Analytics**
 
-A dual-model machine learning system predicting daily wildfire spread distance and identifying extreme-spread ("high-spread") days across British Columbia and Alberta, built on the Canadian Forest Service Daily Spread dataset (CFSDS v1.1 beta, 2002–2024).
+A dual-model machine learning system predicting daily wildfire spread distance and identifying extreme-spread ("high-spread") days across British Columbia and Alberta, built on the Canadian Forest Service Daily Spread dataset (CFSDS v1.1 beta, 2002–2024). https://osf.io/f48ry/overview
 
 **Team:** Gulbanu Mukhanbetkali · Kyungsun Choi · Rafael Gavidia · Simran Kaur
 ---
