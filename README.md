@@ -26,10 +26,10 @@ Wildfire spread is difficult to predict because the target variable — daily sp
 
 This project addresses that with a **dual-model architecture**:
 
-1. **Regression model** (LightGBM, Tweedie-motivated target handling) — predicts continuous daily spread distance for every fire-day.
+1. **Regression model** (LightGBM with Tweedie objective) — predicts continuous daily spread distance for every fire-day.
 2. **Classification model** (LightGBM) — predicts the probability that a fire-day is a "high-spread" event (≥ 90th percentile of the training distribution, **984.44 m/day**), acting as an early-warning layer the regression model cannot reliably provide on its own.
 
-The two models are evaluated independently, cross-validated using fire-level grouping to prevent leakage, and interpreted using TreeSHAP to identify — and formally test — which categories of predictors (fire weather, topography, fuel/hydrology, human infrastructure, or engineered seasonal features) actually drive predictions.
+The two models are evaluated independently, cross-validated using fire-level grouping to prevent data leakage, and interpreted using TreeSHAP to identify which categories of predictors (fire weather, topography, fuel/hydrology, human infrastructure, or engineered seasonal features) drive model predictions and to evaluate Hypothesis 1 based on model-derived feature contributions.
 
 **Research question:** Do Fire Weather Index (FWI) system indices dominate spread prediction relative to topographic and anthropogenic covariates (Hypothesis 1), or do other factors — fuel continuity, hydrological barriers, seasonal timing — play an equal or larger role?
 
@@ -144,7 +144,7 @@ Recall transfers consistently in both directions (~60%), but precision degrades 
 
 All code lives in a single flat `scripts/` folder (not split into `src/phase*` subfolders). Scripts are numbered in execution order and designed to be run sequentially; each reads the outputs of the previous step from `processed/`. Suffixed scripts (`01b`, `12b`, `13b`, etc.) are follow-on diagnostic/sensitivity steps for the script they extend, not a separate phase.
 
-Before running anything, download the raw CFSDS annual CSVs from OSF (https://osf.io/f48ry/overview) and place them under `raw_data/` (not committed to this repository due to size — see `.gitignore`).
+Before running anything, download the raw CFSDS annual CSVs from OSF (https://osf.io/f48ry/overview) and place them under `raw_data/` (not committed to this repository due to size — see `.gitignore`). 
 
 ```bash
 # Phase 1 — Setup & data prep
