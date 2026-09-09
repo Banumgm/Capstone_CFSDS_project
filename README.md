@@ -219,9 +219,9 @@ A 4-page Power BI dashboard consumes four CSVs produced by the export scripts ab
 **Story flow:** *What is happening? → Where & how fast? → Why? → Can we trust it, and what should we do?*
 
 - **Page 1 — Situation Overview:** KPI cards, risk map, top SHAP drivers for the highest-priority fire, operational alerts
-- **Page 2 — How Fast is it Spreading:** global SHAP importance (regression/classification toggle), local SHAP for the selected fire, environmental conditions, fuel & landscape
-- **Page 3 — What Drives Fire Spread:** spread trend over time, spread distribution vs. the 984.44 m/day threshold, top-10 fires, seasonal pattern
-- **Page 4 — How Reliable are the predictions?:** classification performance (precision/recall/F2), confusion matrix, predicted vs. actual scatter, BC vs. AB comparison, operational workflow
+- **Page 2 — What Drives Fire Spread?** environmental KPI cards (p33/p66 training-set thresholds), global SHAP importance (regression/classification toggle), local SHAP for the selected fire, fuel & landscape conditions
+- **Page 3 — How Fast is it Spreading?** spread trend over time, spread distribution vs. the 984.44 m/day threshold, top-10 fires, seasonal pattern
+- **Page 4 — How Reliable are the predictions?** classification performance (precision/recall/F2), confusion matrix, predicted vs. actual scatter, BC vs. AB comparison, operational workflow
 
 **Modeling notes carried into the data model:**
 - `global_shap_importance_powerbi` and `EnvThresholds` (environmental LOW/MODERATE/HIGH cutoffs, p33/p66 on TRAIN) are loaded **without relationships** to any fact table, so Fire ID/date slicers can never accidentally filter them.
