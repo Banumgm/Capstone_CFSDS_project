@@ -265,4 +265,3 @@ pip install -r requirements.txt
 
 **Core dependencies:** `pandas`, `numpy`, `scikit-learn`, `lightgbm`, `xgboost`, `optuna`, `shap`, `geopandas`, `matplotlib`, `seaborn`, `joblib`
 
-Raw CFSDS annual CSVs are not committed to this repository (size); download from OSF and place under `data/raw/` before running `01_filter_bc_ab.py`. See `decisions_log.md` for the full record of methodological decisions and their rationale.
